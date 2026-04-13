@@ -1,0 +1,1312 @@
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { 
+  Play, Lock, Unlock, Compass, Map as MapIcon, Flame, Anchor, AlertTriangle, 
+  CheckCircle, RefreshCcw, Eye, BookOpen, Search, X, Pickaxe, Package, 
+  PackageOpen, Thermometer, Ship, Skull, ArrowUp, ArrowDown, ArrowLeft, 
+  ArrowRight, Activity, Puzzle, Heart, Siren
+} from 'lucide-react';
+
+// === DADOS E CONFIGURAÇÕES DAS FASES ===
+const GAME_STAGES = [
+  {
+    id: 0,
+    title: "O Pai da Ficção Científica",
+    subtitle: "Prólogo",
+    description: "Antes de iniciarmos a expedição física, precisamos destrancar o diário da nossa aventura.",
+    theme: "slate",
+    interactiveMode: "prologue"
+  },
+  {
+    id: 1,
+    title: "O Escritório do Professor",
+    subtitle: "A Busca pelo Mapa",
+    description: "Vasculhe a mesa do Professor Lidenbrock. Encontre o manuscrito antigo de Arne Saknussemm para descobrir o nosso destino.",
+    theme: "amber",
+    interactiveMode: "office"
+  },
+  {
+    id: 2,
+    title: "O Mapa Fragmentado",
+    subtitle: "Montando as Pistas",
+    description: "Inacreditável! O pergaminho está se desfazendo pela idade. Troque as peças de lugar para reconstruir a imagem e descobrirmos como passar pela primeira barreira da cratera.",
+    theme: "amber",
+    interactiveMode: "jigsaw"
+  },
+  {
+    id: 3,
+    title: "O Labirinto Escuro",
+    subtitle: "A Encruzilhada",
+    description: "A descida nos levou a uma encruzilhada em total escuridão. O diário diz que Saknussemm marcou o caminho correto. Use sua lanterna (mova o cursor/dedo) para vasculhar as paredes de pedra e clique no túnel que possui as iniciais 'A.S.'.",
+    theme: "slate",
+    interactiveMode: "flashlight"
+  },
+  {
+    id: 4,
+    title: "A Escavação Subterrânea",
+    subtitle: "Descendo as Camadas",
+    description: "Um desmoronamento bloqueou o túnel! Teremos que escavar pelas camadas geológicas. Quebre as rochas para procurar baús deixados por expedições anteriores. Eles contêm pistas essenciais para a nossa pergunta central.",
+    theme: "orange",
+    interactiveMode: "digging"
+  },
+  {
+    id: 5,
+    title: "A Caverna do Gigante",
+    subtitle: "Fuga Desesperada!",
+    description: "O barulho da nossa escavação acordou o terrível Giga-Saur! Corra pelo labirinto escuro até a saída. Desvie dos fósseis no chão, ou você tropeçará e perderá velocidade. Não olhe para trás!",
+    theme: "red",
+    interactiveMode: "giantChase"
+  },
+  {
+    id: 6,
+    title: "O Mar de Lidenbrock",
+    subtitle: "Batalha dos Monstros",
+    description: "Ictiossauros e Plessiossauros estão agitados no mar! Assuma o leme da jangada. Use as teclas A/D ou as setinhas para desviar dos monstros e rochedos. Sobreviva à travessia para podermos usar a bússola.",
+    theme: "cyan",
+    interactiveMode: "raftSurvival"
+  },
+  {
+    id: 7,
+    title: "A Barreira de Granito",
+    subtitle: "Química e Precisão",
+    description: "Um enorme bloco de granito com as iniciais 'A.S.' bloqueia o caminho para a chaminé vulcânica. Precisamos explodi-lo! Coloque exatamente 45 gramas de pólvora no barril para quebrar a pedra sem desmoronar o teto sobre nós.",
+    theme: "orange",
+    interactiveMode: "powderScale"
+  },
+  {
+    id: 8,
+    title: "A Fuga Explosiva",
+    subtitle: "Pressão Extrema no Stromboli",
+    description: "Chegamos à chaminé do vulcão Stromboli, o 'Farol do Mediterrâneo'! A água do gêiser começou a subir, mas precisamos de pressão máxima para sermos ejetados. Prepare seus dedos!",
+    theme: "red",
+    interactiveMode: "volcanoEscape"
+  }
+];
+
+// === COMPONENTES INTERATIVOS ===
+
+// Fase 0: Prólogo (Júlio Verne)
+const PrologueInteractive = ({ onSolve }) => {
+  const [inputValue, setInputValue] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+  const [showHint, setShowHint] = useState(false);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const cleanInput = inputValue.trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (cleanInput === "JULIO VERNE" || cleanInput === "JULES VERNE") {
+      onSolve();
+    } else {
+      setErrorMsg("Este não é o meu nome! Tente novamente.");
+      setShowHint(true);
+      setInputValue("");
+    }
+  };
+
+  return (
+    <div className="w-full flex flex-col items-center gap-6 p-6 md:p-10 bg-slate-900/80 rounded-xl border border-slate-700 shadow-[0_0_30px_rgba(0,0,0,0.6)] relative overflow-hidden">
+       <BookOpen className="absolute top-[-20%] right-[-10%] w-64 h-64 text-slate-800 opacity-50 pointer-events-none" />
+       <div className="text-center max-w-2xl z-10">
+         <p className="text-slate-200 text-lg md:text-xl font-serif italic leading-relaxed mb-6">
+           "Olá, jovem explorador! Muito antes de existirem foguetes de verdade, eu já imaginava viagens à Lua. Antes dos submarinos modernos, eu escrevi sobre navegar 20 mil léguas no fundo do mar. E, claro, fui eu quem desenhou o mapa secreto para a incrível Viagem ao Centro da Terra!"
+         </p>
+         <p className="text-slate-400 mb-8 font-serif text-sm md:text-base">
+           Muitos me chamam de o 'Pai da Ficção Científica' porque eu previ o futuro com a minha imaginação. Para abrir o diário e começar a sua jornada, você precisa provar que me conhece.
+         </p>
+         <h3 className="text-amber-400 font-bold text-lg md:text-xl uppercase tracking-widest mb-6">
+           Qual é o meu nome completo?
+         </h3>
+       </div>
+
+       <form onSubmit={handleSubmit} className="flex flex-col items-center w-full max-w-md gap-4 z-10">
+         <div className="relative w-full">
+           <input
+             type="text"
+             value={inputValue}
+             onChange={(e) => setInputValue(e.target.value)}
+             placeholder="Digite o nome do autor..."
+             className="w-full bg-[#f4ebd0] border-2 border-[#8d6e63] rounded-sm px-4 py-4 text-center text-xl md:text-2xl font-mono uppercase font-bold text-[#3e2723] focus:outline-none focus:ring-4 focus:ring-amber-500/50 shadow-[inset_0_2px_8px_rgba(0,0,0,0.2)] transition-all"
+             style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/cream-paper.png")' }}
+           />
+         </div>
+         {showHint && (
+           <div className="animate-fade-in mt-2 mb-2">
+             <span className="text-amber-300 font-mono text-2xl md:text-3xl tracking-[0.3em] md:tracking-[0.5em] drop-shadow-[0_0_10px_rgba(253,230,138,0.6)] font-bold">
+               J_ _ _ O &nbsp;V_ _ _ E
+             </span>
+           </div>
+         )}
+         {errorMsg && <p className="text-red-400 font-bold animate-bounce text-sm">{errorMsg}</p>}
+         <button
+           type="submit"
+           disabled={!inputValue.trim()}
+           className="mt-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white font-bold py-3 px-8 rounded-full border border-slate-500 transition-colors shadow-lg tracking-widest uppercase flex items-center gap-2 hover:scale-105 transform duration-200"
+         >
+           <Unlock className="w-5 h-5" /> Destrancar Diário
+         </button>
+       </form>
+    </div>
+  );
+};
+
+// Fase 1: O Escritório (Point and Click)
+const OfficeInteractive = ({ onSolve }) => {
+  const [viewState, setViewState] = useState('desk'); // 'desk', 'drawer', 'parchment'
+  const [inputValue, setInputValue] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const handleDecodeSubmit = (e) => {
+    e.preventDefault();
+    const cleanInput = inputValue.trim().toUpperCase().replace(/\s/g, "");
+    if (cleanInput === "ARNE1864SAKNUS5") {
+      setViewState('desk');
+      onSolve();
+    } else {
+      setErrorMsg("Tradução incorreta. Verifique as runas!");
+      setInputValue("");
+    }
+  };
+
+  return (
+    <div className="relative w-full h-[550px] bg-black rounded-xl border-4 border-[#261410] overflow-hidden shadow-inner flex flex-col items-center justify-center">
+      <div 
+        className="absolute inset-0 bg-contain bg-center bg-no-repeat transition-all duration-500" 
+        style={{ 
+          backgroundImage: `url("https://lh3.googleusercontent.com/d/${viewState === 'drawer' ? '1mcQv-EaB7mdVS-Yy22xuwQqgVfddKlTm' : '16n0eGzQh2Q1QpRPCT48p-cSpPnWwX1s3'}")`,
+          opacity: viewState === 'parchment' ? 0.3 : 1 
+        }}
+      ></div>
+      
+      {viewState === 'desk' && (
+        <div className="absolute inset-0 z-10 w-full h-full">
+          <p className="absolute top-4 left-4 text-white/70 bg-black/50 px-3 py-1 rounded font-serif italic text-sm backdrop-blur-sm">
+            Investigue a mesa do Professor
+          </p>
+          <button 
+            onClick={() => setViewState('drawer')}
+            className="absolute bottom-[12%] right-[22%] transform translate-x-1/2 p-6 rounded-full flex flex-col items-center gap-2 group transition-all duration-300 opacity-0 hover:opacity-100 bg-slate-500/60 border-2 border-slate-300/50 cursor-pointer"
+          >
+            <Search className="w-8 h-8 text-white drop-shadow-md" />
+            <span className="text-white font-bold text-xs uppercase tracking-widest opacity-0 group-hover:opacity-100 bg-black/60 px-2 py-1 rounded absolute top-full mt-2 whitespace-nowrap">
+              Abrir Gaveta
+            </span>
+          </button>
+        </div>
+      )}
+
+      {viewState === 'drawer' && (
+        <div className="absolute inset-0 z-10 w-full h-full animate-fade-in">
+          <button 
+            onClick={() => setViewState('desk')} 
+            className="absolute top-4 right-4 bg-black/50 p-3 rounded-full text-white/70 hover:text-white hover:bg-black/80 transition-colors shadow-lg border border-white/20"
+            title="Fechar gaveta"
+          >
+            <X className="w-8 h-8" />
+          </button>
+          <button 
+            onClick={() => setViewState('parchment')}
+            className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 p-8 rounded-full flex flex-col items-center gap-2 group transition-all duration-300 opacity-0 hover:opacity-100 bg-amber-500/60 border-2 border-amber-300/50 cursor-pointer z-20"
+          >
+            <Eye className="w-10 h-10 text-amber-100 drop-shadow-md" />
+            <span className="text-amber-100 font-bold text-xs uppercase tracking-widest opacity-0 group-hover:opacity-100 bg-black/80 px-3 py-1.5 rounded absolute top-full mt-3 whitespace-nowrap">
+              Ler Pergaminho
+            </span>
+          </button>
+        </div>
+      )}
+
+      {viewState === 'parchment' && (
+        <div className="absolute inset-0 z-50 bg-[#d7ccc8] flex flex-col items-center justify-start p-0 animate-fade-in border-8 border-[#8d6e63]">
+          <div className="absolute inset-0 opacity-30" style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/old-paper.png")' }}></div>
+          <button onClick={() => setViewState('desk')} className="absolute top-2 right-2 text-white/80 hover:text-white z-50 bg-black/40 hover:bg-black/80 transition-colors rounded-full p-2">
+            <X className="w-6 h-6 md:w-8 md:h-8" />
+          </button>
+          <div className="z-10 flex flex-col w-full h-full gap-4 items-center justify-between pb-4 px-4 overflow-hidden pt-4">
+            <h2 className="text-[#3e2723] text-xl md:text-2xl font-serif font-bold uppercase tracking-widest border-b-2 border-[#3e2723] pb-1">
+              Criptograma
+            </h2>
+            <div className="flex-1 w-full min-h-0 flex justify-center items-center">
+              {/* Nova Imagem das Runas Atualizada */}
+              <img src="https://lh3.googleusercontent.com/d/1P5dQB-WPNz31D_FY7onLi97GVSuCuMcb" alt="Pergaminho em Runas" className="max-h-full max-w-full object-contain drop-shadow-2xl rounded" />
+            </div>
+            <div className="w-full max-w-xl bg-white/80 p-4 rounded-xl border border-[#8d6e63] shadow-lg backdrop-blur-sm shrink-0 mb-4">
+              <p className="text-[#3e2723] text-xs font-bold uppercase tracking-wider text-center mb-2">
+                Insira as coordenadas decodificadas:
+              </p>
+              <form onSubmit={handleDecodeSubmit} className="flex flex-col sm:flex-row gap-3">
+                <input
+                  type="text"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  placeholder="Ex: ARNE..."
+                  className="flex-1 bg-white border-2 border-[#8d6e63] rounded-lg px-4 py-2 text-center text-xl font-mono uppercase font-bold text-[#3e2723] focus:outline-none focus:ring-4 focus:ring-amber-500/50"
+                />
+                <button type="submit" disabled={!inputValue.trim()} className="bg-[#5d4037] hover:bg-[#3e2723] disabled:opacity-50 text-white font-bold py-2 px-8 rounded-lg transition-colors shadow-md whitespace-nowrap">
+                  Decodificar
+                </button>
+              </form>
+              {errorMsg && <p className="text-red-700 text-sm text-center font-bold mt-2">{errorMsg}</p>}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Fase 2: O Mapa Fragmentado (Quebra-Cabeça)
+const JigsawPuzzleInteractive = ({ onSolve }) => {
+  const [pieces, setPieces] = useState([]);
+  const [selectedIdx, setSelectedIdx] = useState(null);
+  const [solved, setSolved] = useState(false);
+  const imageUrl = "https://drive.google.com/thumbnail?id=1Gd-WYBTlDCXMZ7MxmTnUppsAlBkvzHXQ&sz=w1000";
+
+  useEffect(() => {
+    let initial = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+    do {
+      for (let i = initial.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [initial[i], initial[j]] = [initial[j], initial[i]];
+      }
+    } while (initial.every((p, i) => p === i));
+    setPieces(initial);
+  }, []);
+
+  const handlePieceClick = (idx) => {
+    if (solved) return;
+    if (selectedIdx === null) {
+      setSelectedIdx(idx);
+    } else {
+      if (selectedIdx !== idx) {
+        const newPieces = [...pieces];
+        [newPieces[selectedIdx], newPieces[idx]] = [newPieces[idx], newPieces[selectedIdx]];
+        setPieces(newPieces);
+        if (newPieces.every((p, i) => p === i)) {
+          setSolved(true);
+          setTimeout(onSolve, 2000);
+        }
+      }
+      setSelectedIdx(null);
+    }
+  };
+
+  return (
+    <div className="w-full flex flex-col items-center gap-6 p-2 md:p-4">
+      <div className="bg-amber-950/80 border border-amber-500/50 p-4 rounded-xl shadow-lg w-full max-w-2xl text-center">
+        <h3 className="text-amber-200 font-bold mb-2 uppercase tracking-widest text-xs md:text-sm flex items-center justify-center gap-2">
+          <Puzzle className="w-5 h-5"/> O Documento Despedaçado
+        </h3>
+        <p className="text-white text-sm md:text-base italic leading-relaxed">
+          O papel estava frágil e se partiu! <strong>Clique em uma peça e depois em outra para trocá-las de lugar</strong> até formar a imagem original.
+        </p>
+      </div>
+
+      <div className="relative grid grid-cols-3 gap-1 w-full max-w-[350px] md:max-w-[450px] aspect-square p-2 bg-[#3e2723] rounded-xl border-8 border-[#261410] shadow-[0_0_30px_rgba(0,0,0,0.8)]">
+        {solved && (
+          <div className="absolute inset-0 bg-green-500/30 flex items-center justify-center z-30 animate-fade-in pointer-events-none backdrop-blur-sm rounded-lg">
+            <span className="bg-green-600 text-white font-bold py-3 px-8 rounded-full shadow-[0_0_40px_#16a34a] tracking-widest uppercase border-2 border-green-400 text-base md:text-lg">
+              Mapa Restaurado!
+            </span>
+          </div>
+        )}
+        {pieces.map((p, idx) => (
+          <div
+            key={idx}
+            onClick={() => handlePieceClick(idx)}
+            className={`w-full h-full cursor-pointer rounded-sm border-2 transition-all duration-200 
+              ${selectedIdx === idx ? 'border-amber-400 scale-90 shadow-[0_0_20px_#fbbf24] z-10 opacity-80' : solved ? 'border-transparent scale-100' : 'border-black/50 hover:scale-[0.98]'}`}
+            style={{
+              backgroundImage: `url("${imageUrl}")`,
+              backgroundSize: '300% 300%',
+              backgroundPosition: `${(p % 3) * 50}% ${Math.floor(p / 3) * 50}%`
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// Fase 3: O Labirinto Escuro (Mecânica de Foco de Luz)
+const FlashlightInteractive = ({ onSolve }) => {
+  const containerRef = useRef(null);
+  const [lightPos, setLightPos] = useState({ x: -1000, y: -1000 });
+  const [errorMsg, setErrorMsg] = useState("");
+  const [solved, setSolved] = useState(false);
+
+  const handleMove = (e) => {
+    if (!containerRef.current || solved) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    setLightPos({ x: clientX - rect.left, y: clientY - rect.top });
+  };
+
+  const handlePathClick = (isCorrect) => {
+    if (isCorrect) {
+      setSolved(true);
+      setErrorMsg("");
+      setTimeout(onSolve, 2000);
+    } else {
+      setErrorMsg("Um abismo! Este não é o caminho marcado por Saknussemm.");
+      setTimeout(() => setErrorMsg(""), 3000);
+    }
+  };
+
+  return (
+    <div className="w-full flex flex-col items-center gap-4 p-2 md:p-4">
+      <div 
+        ref={containerRef}
+        onMouseMove={handleMove}
+        onTouchMove={handleMove}
+        className="relative w-full max-w-3xl h-[400px] md:h-[500px] bg-slate-900 rounded-2xl overflow-hidden border-4 border-slate-800 shadow-[0_0_40px_rgba(0,0,0,0.8)] cursor-crosshair select-none touch-none"
+      >
+        <div className="absolute inset-0 bg-cover bg-center opacity-60" style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1518930037380-0a720edab6d5?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80")' }}></div>
+        <div className="absolute inset-0 opacity-50 mix-blend-overlay pointer-events-none" style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/black-scales.png")' }}></div>
+
+        <button onClick={() => handlePathClick(false)} className="absolute top-[25%] left-[20%] text-slate-400/50 hover:text-white font-serif text-4xl md:text-5xl font-bold tracking-widest transition-colors duration-300 z-10" style={{ textShadow: '0 4px 6px rgba(0,0,0,0.9), inset 0 2px 4px rgba(0,0,0,0.5)' }}>H.B.</button>
+        <button onClick={() => handlePathClick(true)} className="absolute bottom-[30%] right-[25%] text-slate-400/50 hover:text-white font-serif text-4xl md:text-5xl font-bold tracking-widest transition-colors duration-300 z-10" style={{ textShadow: '0 4px 6px rgba(0,0,0,0.9), inset 0 2px 4px rgba(0,0,0,0.5)' }}>A.S.</button>
+        <button onClick={() => handlePathClick(false)} className="absolute top-[60%] left-[45%] text-slate-400/50 hover:text-white font-serif text-4xl md:text-5xl font-bold tracking-widest transition-colors duration-300 z-10" style={{ textShadow: '0 4px 6px rgba(0,0,0,0.9), inset 0 2px 4px rgba(0,0,0,0.5)' }}>J.V.</button>
+
+        <div className={`absolute inset-0 pointer-events-none z-20 transition-opacity duration-1000 ${solved ? 'opacity-0' : 'opacity-100'}`} style={{ background: `radial-gradient(circle 100px at ${lightPos.x}px ${lightPos.y}px, transparent 0%, rgba(0,0,0,0.85) 100px, rgba(0,0,0,0.98) 130px, #000 100%)` }} />
+
+        {solved && (
+          <div className="absolute inset-0 bg-green-500/20 flex items-center justify-center z-30 animate-fade-in pointer-events-none backdrop-blur-sm">
+            <span className="bg-green-600 text-white font-bold py-4 px-10 rounded-full shadow-[0_0_40px_#16a34a] tracking-widest uppercase border-2 border-green-400 text-lg">
+              Passagem Encontrada!
+            </span>
+          </div>
+        )}
+      </div>
+      {errorMsg && (
+        <div className="bg-red-900/90 border border-red-500 text-red-100 px-6 py-3 rounded-lg flex items-center gap-2 animate-bounce">
+          <AlertTriangle className="w-5 h-5" /> {errorMsg}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Fase 4: Escavação (Grid de Blocos e Baús)
+const DiggingInteractive = ({ onSolve }) => {
+  const [blocks, setBlocks] = useState([]);
+  const [hintsFound, setHintsFound] = useState([]);
+  const [inputValue, setInputValue] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const HINTS = [
+    "Dica 1: A palavra mede uma taxa de variação constante.",
+    "Dica 2: Começa com a letra 'G' e termina com a letra 'E'.",
+    "Dica 3: Costuma acompanhar a palavra 'Geotérmico' para explicar a temperatura."
+  ];
+
+  useEffect(() => {
+    const initialBlocks = Array.from({ length: 20 }, (_, i) => ({
+      id: i, isBroken: false, hasChest: false, chestOpened: false
+    }));
+    let chestIndices = [];
+    while(chestIndices.length < 3) {
+      let r = Math.floor(Math.random() * 20);
+      if(!chestIndices.includes(r)) chestIndices.push(r);
+    }
+    chestIndices.forEach((index) => { initialBlocks[index].hasChest = true; });
+    setBlocks(initialBlocks);
+  }, []);
+
+  const handleBlockClick = (index) => {
+    const newBlocks = [...blocks];
+    const block = newBlocks[index];
+
+    if (!block.isBroken) {
+      block.isBroken = true;
+      setBlocks(newBlocks);
+    } else if (block.hasChest && !block.chestOpened) {
+      block.chestOpened = true;
+      const nextHintIndex = hintsFound.length;
+      if (nextHintIndex < HINTS.length) {
+        setHintsFound(prev => [...prev, HINTS[nextHintIndex]]);
+      }
+      setBlocks(newBlocks);
+    }
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const cleanInput = inputValue.trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); 
+    if (cleanInput === "GRADIENTE" || cleanInput === "GRADIENTE GEOTERMICO") {
+      onSolve();
+    } else {
+      setErrorMsg("Resposta incorreta! Continue escavando atrás de mais pistas.");
+      setInputValue("");
+    }
+  };
+
+  return (
+    <div className="w-full flex flex-col items-center gap-6 p-2 md:p-4">
+      <div className="bg-orange-950/80 border border-orange-500/50 p-4 rounded-xl shadow-lg w-full max-w-3xl text-center">
+        <h3 className="text-orange-200 font-bold mb-3 uppercase tracking-widest text-xs md:text-sm flex items-center justify-center gap-2">
+          <Thermometer className="w-5 h-5"/> O Enigma Térmico
+        </h3>
+        <p className="text-white text-sm md:text-base italic leading-relaxed">
+          "O Professor Lidenbrock duvidava do calor extremo no interior da Terra. Hoje sabemos que a temperatura aumenta consideravelmente à medida que escavamos. <strong>Como se chama a taxa de aumento da temperatura em relação à profundidade da Terra?</strong>"
+        </p>
+      </div>
+
+      <div className="flex flex-col md:flex-row gap-8 w-full max-w-4xl justify-center items-start">
+        <div className="grid grid-cols-5 gap-1 md:gap-2 bg-[#3e2723] p-3 md:p-4 rounded-xl border-4 border-[#261410] shadow-inner shrink-0 cursor-crosshair mx-auto">
+          {blocks.map((block, i) => (
+            <div 
+              key={block.id} onClick={() => handleBlockClick(i)}
+              className={`relative w-12 h-12 md:w-16 md:h-16 rounded transition-all duration-300 flex items-center justify-center overflow-hidden
+                ${!block.isBroken ? 'bg-stone-500 hover:bg-stone-400 border-b-4 border-stone-700 hover:-translate-y-1 active:border-b-0 active:translate-y-1' : 'bg-stone-900 border border-black/50 shadow-inner'}
+              `}
+            >
+              {!block.isBroken && <div className="absolute inset-0 opacity-30 mix-blend-overlay pointer-events-none" style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/black-scales.png")' }}></div>}
+              {block.isBroken && block.hasChest && !block.chestOpened && <Package className="w-8 h-8 md:w-10 md:h-10 text-amber-500 animate-bounce cursor-pointer drop-shadow-[0_0_10px_rgba(245,158,11,0.5)]" />}
+              {block.isBroken && block.hasChest && block.chestOpened && <PackageOpen className="w-8 h-8 md:w-10 md:h-10 text-amber-700 opacity-50" />}
+            </div>
+          ))}
+        </div>
+
+        <div className="flex-1 w-full flex flex-col gap-4">
+          <div className="bg-black/40 border border-white/10 rounded-xl p-4 min-h-[160px] flex flex-col">
+            <h4 className="text-orange-300 font-bold uppercase tracking-widest text-xs mb-3 border-b border-orange-500/30 pb-2">Baús Encontrados: {hintsFound.length}/3</h4>
+            <ul className="flex flex-col gap-2 flex-1">
+              {hintsFound.length === 0 && <li className="text-white/40 text-sm italic m-auto">Nenhum baú aberto. Quebre as rochas!</li>}
+              {hintsFound.map((h, i) => (
+                <li key={i} className="text-orange-100 text-xs md:text-sm bg-orange-900/30 p-2 rounded border border-orange-500/20 animate-fade-in flex gap-2 items-start shadow-sm">
+                  <Search className="w-4 h-4 mt-0.5 shrink-0 text-orange-400"/>{h}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+            <input
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              placeholder="QUAL É O CONCEITO?"
+              className="w-full bg-black/50 border-2 border-orange-500/30 rounded-lg px-4 py-3 text-center text-xl font-mono uppercase font-bold text-orange-100 focus:outline-none focus:border-orange-500 transition-colors shadow-inner"
+            />
+            {errorMsg && <p className="text-red-400 text-sm text-center font-bold animate-pulse">{errorMsg}</p>}
+            <button type="submit" disabled={!inputValue.trim()} className="w-full bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white font-bold py-3 rounded-lg transition-colors shadow-md tracking-widest uppercase">
+              Confirmar Resposta
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Fase 5: A Caverna do Gigante (Mecânica de Fuga Labirinto - Top-Down)
+const GiantChaseInteractive = ({ onSolve }) => {
+  const WIDTH = 15;
+  const HEIGHT = 11;
+  const EMPTY = 0, WALL = 1, FOSSIL = 2, EXIT = 3;
+
+  const MAZE = [
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,3,1],
+    [1,0,0,0,1,0,0,0,2,0,0,0,1,0,1],
+    [1,0,1,0,1,0,1,1,1,1,1,0,1,0,1],
+    [1,0,1,0,0,0,1,0,0,0,1,0,1,0,1],
+    [1,1,1,1,1,0,1,2,1,0,1,0,1,0,1],
+    [1,0,0,0,1,0,0,0,1,0,0,0,0,0,1],
+    [1,1,1,0,1,1,1,1,1,1,1,1,1,0,1],
+    [1,0,0,0,2,0,0,0,0,0,0,1,1,0,1],
+    [1,0,1,1,1,1,1,1,1,1,0,1,2,0,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  ];
+
+  const engine = useRef({
+    px: 1, py: 1,
+    mx: 1, my: 9,
+    maze: JSON.parse(JSON.stringify(MAZE)),
+    slowedUntil: 0,
+    lastPlayerMove: 0,
+    status: 'start' 
+  });
+
+  const [renderState, setRenderState] = useState({ ...engine.current });
+
+  const getNextMonsterStep = (mx, my, px, py, grid) => {
+    const queue = [[mx, my]];
+    const cameFrom = new globalThis.Map();
+    const visited = new globalThis.Set();
+    cameFrom.set(`${mx},${my}`, null);
+    visited.add(`${mx},${my}`);
+
+    const dirs = [[0,1], [0,-1], [1,0], [-1,0]];
+
+    while (queue.length > 0) {
+      const [cx, cy] = queue.shift();
+      if (cx === px && cy === py) break;
+
+      for (const [dx, dy] of dirs) {
+        const nx = cx + dx, ny = cy + dy;
+        if (nx >= 0 && nx < WIDTH && ny >= 0 && ny < HEIGHT && grid[ny][nx] !== WALL) {
+          if (!visited.has(`${nx},${ny}`)) {
+            visited.add(`${nx},${ny}`);
+            cameFrom.set(`${nx},${ny}`, [cx, cy]);
+            queue.push([nx, ny]);
+          }
+        }
+      }
+    }
+
+    let curr = [px, py];
+    if (!cameFrom.has(`${px},${py}`)) return [mx, my];
+
+    while (cameFrom.get(`${curr[0]},${curr[1]}`) !== null) {
+      const prev = cameFrom.get(`${curr[0]},${curr[1]}`);
+      if (prev[0] === mx && prev[1] === my) {
+        return curr;
+      }
+      curr = prev;
+    }
+    return [mx, my];
+  };
+
+  const handlePlayerMove = useCallback((dx, dy) => {
+    const st = engine.current;
+    if (st.status !== 'playing') return;
+
+    const now = Date.now();
+    const cooldown = now < st.slowedUntil ? 400 : 150; 
+
+    if (now - st.lastPlayerMove < cooldown) return; 
+    st.lastPlayerMove = now;
+
+    const nx = st.px + dx;
+    const ny = st.py + dy;
+
+    if (nx >= 0 && nx < WIDTH && ny >= 0 && ny < HEIGHT) {
+      const cell = st.maze[ny][nx];
+      if (cell !== WALL) {
+        st.px = nx;
+        st.py = ny;
+
+        if (cell === FOSSIL) {
+          st.slowedUntil = now + 1500; 
+          st.maze[ny][nx] = EMPTY; 
+        } else if (cell === EXIT) {
+          st.status = 'won';
+          setTimeout(onSolve, 1500);
+        }
+
+        if (st.px === st.mx && st.py === st.my) {
+          st.status = 'caught';
+        }
+
+        setRenderState({ ...st });
+      }
+    }
+  }, [onSolve]);
+
+  useEffect(() => {
+    const handleKey = (e) => {
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault();
+      if (e.key === 'ArrowUp' || e.key === 'w') handlePlayerMove(0, -1);
+      if (e.key === 'ArrowDown' || e.key === 's') handlePlayerMove(0, 1);
+      if (e.key === 'ArrowLeft' || e.key === 'a') handlePlayerMove(-1, 0);
+      if (e.key === 'ArrowRight' || e.key === 'd') handlePlayerMove(1, 0);
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [handlePlayerMove]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const st = engine.current;
+      if (st.status !== 'playing') return;
+
+      const [nx, ny] = getNextMonsterStep(st.mx, st.my, st.px, st.py, st.maze);
+      st.mx = nx;
+      st.my = ny;
+
+      if (st.mx === st.px && st.my === st.py) {
+        st.status = 'caught';
+      }
+
+      setRenderState({ ...st });
+    }, 500); 
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const isSlowed = Date.now() < renderState.slowedUntil;
+
+  const restartLevel = () => {
+    engine.current = {
+      px: 1, py: 1, mx: 1, my: 9, 
+      maze: JSON.parse(JSON.stringify(MAZE)),
+      slowedUntil: 0, lastPlayerMove: 0, status: 'playing'
+    };
+    setRenderState({ ...engine.current });
+  };
+
+  return (
+    <div className="w-full flex flex-col items-center gap-4 p-2 select-none relative">
+      <div className="w-full max-w-lg bg-black/80 p-4 rounded-xl border border-red-900/50 shadow-[0_0_20px_rgba(153,27,27,0.5)] flex flex-col gap-2 relative overflow-hidden">
+        {renderState.status === 'playing' && <div className="absolute inset-0 bg-red-500/10 animate-pulse pointer-events-none"></div>}
+        <div className="flex justify-between items-center z-10">
+           <div className="flex items-center gap-2">
+             <Siren className="w-6 h-6 text-red-500 animate-bounce" />
+             <span className="text-red-400 font-bold uppercase tracking-widest text-xs md:text-sm">Perseguição Ativada!</span>
+           </div>
+           <span className="text-slate-400 text-xs font-bold uppercase">Nível de Ruído</span>
+        </div>
+        <div className="w-full h-3 bg-slate-900 rounded-full border border-red-900/50 overflow-hidden z-10">
+           <div className="h-full bg-red-600 animate-pulse" style={{ width: '100%' }} />
+        </div>
+      </div>
+
+      <div className="relative rounded-xl shadow-[0_0_50px_rgba(0,0,0,0.9)] overflow-hidden bg-slate-900 border-4 border-slate-800">
+        <div 
+          className="absolute inset-0 pointer-events-none z-20 transition-all duration-300"
+          style={{ background: `radial-gradient(circle 120px at ${renderState.px * (100/WIDTH) + 3}% ${renderState.py * (100/HEIGHT) + 4}%, transparent 0%, rgba(0,0,20,0.85) 120px, rgba(0,0,20,0.98) 100%)` }}
+        />
+
+        {renderState.status === 'start' && (
+          <div className="absolute inset-0 bg-black/80 z-30 flex flex-col items-center justify-center p-6 text-center">
+            <h2 className="text-red-500 font-bold text-3xl mb-4 tracking-widest uppercase">CORRA!</h2>
+            <p className="text-white text-sm mb-6 max-w-sm">Use as Setas do Teclado para fugir pelo labirinto. Fósseis no chão te deixam lento. Encontre a porta iluminada!</p>
+            <button onClick={restartLevel} className="bg-red-700 hover:bg-red-600 text-white font-bold py-3 px-8 rounded-full uppercase tracking-widest transition-transform hover:scale-105">Começar Fuga</button>
+          </div>
+        )}
+
+        {renderState.status === 'caught' && (
+          <div className="absolute inset-0 bg-red-950/90 z-30 flex flex-col items-center justify-center p-6 text-center animate-fade-in">
+             <span className="text-[80px] drop-shadow-2xl mb-2 animate-bounce">🦖</span>
+             <h2 className="text-red-500 font-bold text-2xl mb-2 tracking-widest uppercase drop-shadow-md">Pego pelo Giga-Saur!</h2>
+             <button onClick={restartLevel} className="mt-4 bg-red-700 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-lg uppercase tracking-widest text-sm shadow-lg">Tentar Novamente</button>
+          </div>
+        )}
+
+        {renderState.status === 'won' && (
+          <div className="absolute inset-0 bg-green-900/90 z-30 flex flex-col items-center justify-center p-6 text-center animate-fade-in">
+             <CheckCircle className="w-16 h-16 text-green-400 mb-4" />
+             <h2 className="text-green-400 font-bold text-2xl mb-2 tracking-widest uppercase">Fuga Concluída!</h2>
+          </div>
+        )}
+
+        <div className="grid p-1 gap-0" style={{ gridTemplateColumns: `repeat(${WIDTH}, 1fr)` }}>
+          {renderState.maze.map((row, y) => (
+            row.map((cell, x) => {
+              const isPlayer = renderState.px === x && renderState.py === y;
+              const isMonster = renderState.mx === x && renderState.my === y;
+              return (
+                <div key={`${x}-${y}`} className={`w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 flex items-center justify-center relative ${cell === WALL ? 'bg-slate-800 border-t border-l border-slate-700 shadow-[inset_-2px_-2px_6px_rgba(0,0,0,0.8)]' : 'bg-slate-900 border border-slate-800/50'}`}>
+                  {cell === FOSSIL && !isPlayer && !isMonster && <span className="text-xs md:text-base opacity-70">🦴</span>}
+                  {cell === EXIT && <span className="absolute inset-0 bg-amber-400/30 animate-pulse border-2 border-amber-300">🚪</span>}
+                  {isMonster && <span className="absolute text-3xl md:text-5xl drop-shadow-[0_0_15px_rgba(220,38,38,0.8)] z-10 animate-pulse" style={{ transform: 'translateY(-20%)' }}>🦖</span>}
+                  {isPlayer && !isMonster && <span className={`text-xl md:text-3xl drop-shadow-lg z-10 transition-all ${isSlowed ? 'opacity-50 blur-[1px]' : 'animate-bounce'}`}>{isSlowed ? '🥶' : '🏃'}</span>}
+                </div>
+              );
+            })
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2 w-full max-w-sm mt-4 md:hidden">
+         <div className="flex justify-center"><button onClick={() => handlePlayerMove(0, -1)} className="w-16 h-16 bg-slate-800 text-white rounded-xl flex items-center justify-center shadow-lg active:bg-slate-600 border border-slate-700"><ArrowUp /></button></div>
+         <div className="flex justify-center gap-6">
+            <button onClick={() => handlePlayerMove(-1, 0)} className="w-16 h-16 bg-slate-800 text-white rounded-xl flex items-center justify-center shadow-lg active:bg-slate-600 border border-slate-700"><ArrowLeft /></button>
+            <button onClick={() => handlePlayerMove(1, 0)} className="w-16 h-16 bg-slate-800 text-white rounded-xl flex items-center justify-center shadow-lg active:bg-slate-600 border border-slate-700"><ArrowRight /></button>
+         </div>
+         <div className="flex justify-center"><button onClick={() => handlePlayerMove(0, 1)} className="w-16 h-16 bg-slate-800 text-white rounded-xl flex items-center justify-center shadow-lg active:bg-slate-600 border border-slate-700"><ArrowDown /></button></div>
+      </div>
+      <p className="text-slate-400 text-sm text-center mt-2 hidden md:block">Use as <strong>Setas do Teclado ou WASD</strong> para correr.<br/>Os fósseis te atrasam!</p>
+    </div>
+  );
+};
+
+// Fase 6: Sobrevivência na Jangada e Bússola Enlouquecida
+const MagneticRadar = ({ onSolve }) => {
+  const mapRef = useRef(null);
+  const [locked, setLocked] = useState(false);
+  const [needleAngle, setNeedleAngle] = useState(0);
+  const [errorMsg, setErrorMsg] = useState("");
+  const distRef = useRef(100);
+  const angleRef = useRef(0);
+
+  const [target] = useState(() => ({
+    x: 10 + Math.random() * 80,
+    y: 10 + Math.random() * 80
+  }));
+
+  const handleMove = (e) => {
+    if (!mapRef.current) return;
+    const rect = mapRef.current.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    
+    let x = ((clientX - rect.left) / rect.width) * 100;
+    let y = ((clientY - rect.top) / rect.height) * 100;
+    
+    x = Math.max(0, Math.min(100, x));
+    y = Math.max(0, Math.min(100, y));
+
+    const currentDist = Math.hypot(target.x - x, target.y - y);
+    distRef.current = currentDist; 
+
+    const isNowLocked = currentDist <= 8; 
+    if (locked !== isNowLocked) {
+      setLocked(isNowLocked); 
+    }
+  };
+
+  useEffect(() => {
+    let reqId;
+    const animate = () => {
+      if (locked) {
+         angleRef.current = 0; 
+      } else {
+         const speed = Math.max(1.5, (distRef.current / 100) * 35); 
+         angleRef.current = (angleRef.current + speed) % 360;
+      }
+      setNeedleAngle(angleRef.current);
+      reqId = requestAnimationFrame(animate);
+    };
+    reqId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(reqId);
+  }, [locked]); 
+
+  const handleClick = () => {
+    if (locked) {
+      onSolve();
+    } else {
+      setErrorMsg("Sinal instável! Continue deslizando para estabilizar a agulha.");
+      setTimeout(() => setErrorMsg(""), 2000);
+    }
+  };
+
+  return (
+    <div className="w-full flex flex-col md:flex-row gap-8 items-center justify-center bg-black/40 p-6 rounded-2xl border border-cyan-500/30">
+      <div className="flex flex-col items-center bg-slate-900 p-6 rounded-2xl border-4 border-slate-700 shadow-[0_0_30px_rgba(0,0,0,0.8)]">
+        <div className="w-32 h-32 rounded-full border-8 border-slate-600 bg-slate-800 flex items-center justify-center relative shadow-[inset_0_0_20px_rgba(0,0,0,1)]">
+           <span className="absolute top-1 text-slate-400 text-xs font-bold">N</span>
+           <span className="absolute bottom-1 text-slate-400 text-xs font-bold">S</span>
+           <span className="absolute left-1 text-slate-400 text-xs font-bold">W</span>
+           <span className="absolute right-1 text-slate-400 text-xs font-bold">E</span>
+           <div className={`absolute w-3 h-24 transition-colors duration-200 ${locked ? 'bg-green-400 shadow-[0_0_15px_#4ade80]' : 'bg-red-500'}`} style={{ clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)', transform: `rotate(${needleAngle}deg)` }} />
+           <div className="w-4 h-4 bg-slate-400 rounded-full z-10" />
+        </div>
+        <div className={`mt-6 px-4 py-2 rounded font-bold uppercase tracking-widest text-xs transition-colors duration-300 ${locked ? 'bg-green-500/20 text-green-400 border border-green-500' : 'bg-red-500/20 text-red-400 border border-red-500'}`}>
+          {locked ? 'SINAL TRAVADO' : 'INTERFERÊNCIA'}
+        </div>
+      </div>
+      <div className="flex-1 w-full max-w-sm flex flex-col gap-2">
+         <p className="text-cyan-200 text-xs uppercase tracking-widest font-bold text-center">Área de Rastreamento (Passe o Cursor)</p>
+         <div ref={mapRef} onMouseMove={handleMove} onTouchMove={handleMove} onClick={handleClick} className="w-full aspect-square bg-[#d7ccc8] rounded-lg border-8 border-[#8d6e63] relative overflow-hidden cursor-crosshair shadow-[0_0_30px_rgba(0,0,0,0.5)] transition-all">
+           <div className="absolute inset-0 opacity-40 mix-blend-overlay pointer-events-none" style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/old-paper.png")' }}></div>
+           <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(141,110,99,0.2)_1px,transparent_1px),linear-gradient(90deg,rgba(141,110,99,0.2)_1px,transparent_1px)] bg-[size:20px_20px]"></div>
+           {locked && (
+             <div className="absolute inset-0 flex items-center justify-center bg-green-500/20 backdrop-blur-sm animate-fade-in pointer-events-none">
+                <span className="text-green-900 bg-green-400 px-6 py-3 rounded-full font-bold uppercase tracking-widest border-2 border-green-700 shadow-xl pointer-events-auto cursor-pointer">Atracar Aqui!</span>
+             </div>
+           )}
+         </div>
+         {errorMsg && <p className="text-red-400 text-xs font-bold text-center animate-bounce mt-2">{errorMsg}</p>}
+      </div>
+    </div>
+  );
+};
+
+const RaftArcadeGame = ({ onWin, onLose }) => {
+  const [state, setState] = useState({ x: 50, hull: 100, progress: 0, obs: [], hit: false });
+  const keys = useRef({ left: false, right: false });
+  const engine = useRef({ x: 50, hull: 100, progress: 0, obs: [], iFrames: 0 });
+  const requestRef = useRef();
+
+  const oceanStyles = `
+    @keyframes ocean-move { 0% { background-position: 0 0; } 100% { background-position: 0 100%; } }
+    .ocean-bg { background-image: repeating-linear-gradient(0deg, rgba(6, 182, 212, 0.2) 0px, rgba(6, 182, 212, 0.2) 20px, transparent 20px, transparent 40px); background-size: 100% 80px; animation: ocean-move 1s linear infinite; }
+  `;
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if(e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.current.left = true;
+      if(e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.current.right = true;
+    };
+    const handleKeyUp = (e) => {
+      if(e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.current.left = false;
+      if(e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.current.right = false;
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
+
+  useEffect(() => {
+    let lastTime = performance.now();
+    const loop = (time) => {
+      const dt = time - lastTime;
+      const timeScale = Math.min(dt / 16.66, 2); 
+      lastTime = time;
+      const st = engine.current;
+
+      if (st.hull <= 0) { onLose(); return; }
+      if (st.progress >= 100) { onWin(); return; }
+
+      if (keys.current.left) st.x = Math.max(5, st.x - 1.8 * timeScale);
+      if (keys.current.right) st.x = Math.min(95, st.x + 1.8 * timeScale);
+
+      st.progress += 0.002 * dt; 
+      if (st.iFrames > 0) st.iFrames -= timeScale;
+
+      if (Math.random() < 0.025 * timeScale) {
+        const types = ['🦑', '🦖', '🪨', '🌊'];
+        st.obs.push({
+          id: Math.random().toString(), x: 10 + Math.random() * 80, y: -10, type: types[Math.floor(Math.random() * types.length)], hit: false
+        });
+      }
+
+      st.obs.forEach(o => {
+        o.y += 0.9 * timeScale; 
+        if (!o.hit && st.iFrames <= 0) {
+          if (o.y > 75 && o.y < 95 && Math.abs(o.x - st.x) < 8) {
+            o.hit = true;
+            st.hull -= 20; 
+            st.iFrames = 40; 
+          }
+        }
+      });
+      st.obs = st.obs.filter(o => o.y < 120);
+
+      setState({ x: st.x, hull: st.hull, progress: st.progress, obs: [...st.obs], hit: st.iFrames > 0 });
+      requestRef.current = requestAnimationFrame(loop);
+    };
+    requestRef.current = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(requestRef.current);
+  }, [onWin, onLose]);
+
+  const touchLeftProps = { onTouchStart: () => { keys.current.left = true }, onTouchEnd: () => { keys.current.left = false }, onMouseDown: () => { keys.current.left = true }, onMouseUp: () => { keys.current.left = false }, onMouseLeave: () => { keys.current.left = false } };
+  const touchRightProps = { onTouchStart: () => { keys.current.right = true }, onTouchEnd: () => { keys.current.right = false }, onMouseDown: () => { keys.current.right = true }, onMouseUp: () => { keys.current.right = false }, onMouseLeave: () => { keys.current.right = false } };
+
+  return (
+    <div className="w-full max-w-3xl flex flex-col gap-4 animate-fade-in z-20">
+       <style>{oceanStyles}</style>
+       <div className="flex flex-col md:flex-row gap-4 justify-between bg-black/60 p-4 rounded-xl border border-cyan-500/30 shadow-lg">
+          <div className="flex-1">
+             <div className="text-xs uppercase font-bold text-cyan-300 mb-1 flex justify-between"><span>Distância Navegada</span><span>{Math.floor(state.progress)}%</span></div>
+             <div className="w-full h-3 bg-black/50 rounded-full overflow-hidden border border-cyan-800 shadow-inner"><div className="h-full bg-cyan-400 transition-all duration-100" style={{ width: `${state.progress}%` }}></div></div>
+          </div>
+          <div className="flex-1">
+             <div className="text-xs uppercase font-bold text-red-300 mb-1 flex justify-between"><span>Integridade do Casco</span><span>{state.hull}%</span></div>
+             <div className="w-full h-3 bg-black/50 rounded-full overflow-hidden border border-red-800 shadow-inner"><div className={`h-full transition-all duration-300 ${state.hull > 50 ? 'bg-green-500' : 'bg-red-500'}`} style={{ width: `${state.hull}%` }}></div></div>
+          </div>
+       </div>
+
+       <div className="relative w-full h-[350px] md:h-[450px] bg-cyan-950 overflow-hidden border-4 border-cyan-700 rounded-xl shadow-[0_0_40px_rgba(6,182,212,0.4)]" style={{ perspective: '800px' }}>
+          <div className="absolute inset-[-50%] opacity-40 ocean-bg pointer-events-none" style={{ transform: 'rotateX(60deg) translateZ(-50px)' }}></div>
+          <div className="absolute inset-0 bg-gradient-to-b from-cyan-950 via-transparent to-transparent pointer-events-none z-10"></div>
+          {state.obs.map(o => {
+             const scale = 0.2 + (o.y / 100) * 2.5; 
+             return (
+               <div key={o.id} className="absolute text-3xl md:text-5xl pointer-events-none z-20" style={{ left: `${o.x}%`, top: `${o.y}%`, transform: `translate(-50%, -50%) scale(${scale})`, opacity: o.hit ? 0.3 : 1, textShadow: '0 10px 20px rgba(0,0,0,0.8)' }}>{o.type}</div>
+             )
+          })}
+          <div className={`absolute bottom-[5%] text-5xl md:text-7xl transition-opacity duration-75 ${state.hit ? 'opacity-50 animate-pulse' : 'opacity-100'} pointer-events-none z-30`} style={{ left: `${state.x}%`, transform: 'translateX(-50%)', textShadow: '0 20px 30px rgba(0,0,0,0.9)' }}>🛶</div>
+       </div>
+
+       <div className="flex w-full gap-4 md:hidden z-20">
+          <button {...touchLeftProps} className="flex-1 bg-cyan-800/80 active:bg-cyan-600 text-white font-bold py-6 rounded-xl border-2 border-cyan-500 flex items-center justify-center select-none shadow-lg"><ArrowLeft className="w-8 h-8" /> ESQUERDA</button>
+          <button {...touchRightProps} className="flex-1 bg-cyan-800/80 active:bg-cyan-600 text-white font-bold py-6 rounded-xl border-2 border-cyan-500 flex items-center justify-center select-none shadow-lg">DIREITA <ArrowRight className="w-8 h-8" /></button>
+       </div>
+    </div>
+  );
+};
+
+const RaftSurvivalInteractive = ({ onSolve }) => {
+  const [part, setPart] = useState('intro');
+
+  return (
+    <div className="w-full flex flex-col items-center gap-6 p-2 md:p-4 relative">
+      {part === 'intro' && (
+        <div className="bg-cyan-950/80 border border-cyan-500/50 p-8 rounded-xl shadow-lg w-full max-w-2xl text-center flex flex-col items-center animate-fade-in">
+          <Ship className="w-20 h-20 text-cyan-400 mb-4 animate-bounce" />
+          <h3 className="text-cyan-200 font-bold mb-4 text-xl md:text-2xl uppercase tracking-widest">Navegação de Risco!</h3>
+          <p className="text-white text-base md:text-lg leading-relaxed mb-8">
+            Um Ictiossauro e um Plessiossauro estão lutando no mar enquanto desviamos de recifes!
+            <br/><br/><strong>Sua missão:</strong> Assuma o leme! Use as <strong>teclas A e D</strong>, as <strong>Setinhas</strong> (ou os botões da tela) para desviar. Sobreviva até a travessia terminar. O casco suporta no máximo 5 batidas!
+          </p>
+          <button onClick={() => setPart('arcade')} className="bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-4 px-10 rounded-full shadow-[0_0_15px_rgba(6,182,212,0.5)] transition-all transform hover:scale-105 tracking-widest">ASSUMIR O LEME</button>
+        </div>
+      )}
+      {part === 'arcade' && <RaftArcadeGame onWin={() => setPart('compass')} onLose={() => setPart('dead')} />}
+      {part === 'dead' && (
+        <div className="bg-red-950/90 border border-red-500 p-8 rounded-xl shadow-lg w-full max-w-xl text-center flex flex-col items-center animate-fade-in">
+          <Skull className="w-24 h-24 text-red-500 mb-6" />
+          <h3 className="text-red-200 font-bold mb-4 text-3xl uppercase tracking-widest">A Jangada Afundou!</h3>
+          <p className="text-white mb-8 text-lg">Vocês bateram em muitos obstáculos e não resistiram ao mar bravio.</p>
+          <button onClick={() => setPart('arcade')} className="bg-red-700 hover:bg-red-600 text-white font-bold py-3 px-8 rounded-full flex items-center gap-2 transition-transform hover:scale-105"><RefreshCcw className="w-5 h-5" /> TENTAR NOVAMENTE</button>
+        </div>
+      )}
+      {part === 'compass' && (
+        <div className="w-full max-w-4xl flex flex-col items-center animate-fade-in z-20">
+          <div className="bg-cyan-950/80 border border-cyan-500/50 p-6 rounded-xl shadow-lg w-full text-center mb-8">
+            <h3 className="text-amber-400 font-bold mb-2 uppercase tracking-widest flex items-center justify-center gap-2"><Compass className="w-6 h-6 animate-spin" /> O Radar Magnético</h3>
+            <p className="text-cyan-100 text-sm md:text-base leading-relaxed">
+              Sobrevivemos aos monstros! Mas a tempestade elétrica desorientou a bússola.<br/><br/>
+              <strong>O Enigma:</strong> A agulha gira freneticamente quando longe da costa. <strong>Passe o cursor ou o dedo sobre o mapa em branco</strong>. Quando encontrar a anomalia magnética da ilha segura, a bússola desacelerará até travar no Norte. Clique no mapa assim que o sinal estabilizar!
+            </p>
+          </div>
+          <MagneticRadar onSolve={onSolve} />
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Fase 7: A Barreira de Granito (Balança de Pólvora)
+const PowderScaleInteractive = ({ onSolve }) => {
+  const TARGET_WEIGHT = 45;
+  const AVAILABLE_BAGS = [
+    { id: 1, weight: 10, color: 'bg-red-800' },
+    { id: 2, weight: 15, color: 'bg-blue-800' },
+    { id: 3, weight: 5,  color: 'bg-green-800' },
+    { id: 4, weight: 12, color: 'bg-yellow-800' },
+    { id: 5, weight: 8,  color: 'bg-purple-800' },
+    { id: 6, weight: 20, color: 'bg-orange-800' }
+  ];
+
+  const [barrel, setBarrel] = useState([]);
+  const [explosionState, setExplosionState] = useState('idle');
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const currentWeight = barrel.reduce((acc, bag) => acc + bag.weight, 0);
+
+  const handleAddBag = (bag) => {
+    if (barrel.find(b => b.id === bag.id)) return;
+    setBarrel([...barrel, bag]);
+  };
+
+  const handleRemoveBag = (bag) => {
+    setBarrel(barrel.filter(b => b.id !== bag.id));
+  };
+
+  const handleDetonate = () => {
+    if (currentWeight === TARGET_WEIGHT) {
+      setExplosionState('boom');
+      setTimeout(() => { onSolve(); }, 4000);
+    } else {
+      setExplosionState('poof');
+      setErrorMsg("Cof, cof! Quase, Axel! A quantidade não está exata. O alvo é " + TARGET_WEIGHT + "g. Vamos calcular de novo!");
+      setTimeout(() => {
+        setExplosionState('idle');
+        setBarrel([]);
+        setErrorMsg("");
+      }, 4500); 
+    }
+  };
+
+  return (
+    <div className="w-full flex flex-col items-center gap-6 p-4 relative">
+      <div className="bg-orange-950/80 p-4 rounded-xl border border-orange-500/50 text-center shadow-lg w-full max-w-2xl">
+         <h3 className="text-orange-300 font-bold mb-2 uppercase tracking-widest">Mistura Explosiva</h3>
+         <p className="text-white text-sm md:text-base leading-relaxed">
+           Para abrir caminho sem desmoronar a caverna nas nossas cabeças, precisamos de <strong>exatamente {TARGET_WEIGHT} gramas</strong> de pólvora. Clique nos saquinhos para colocá-los ou tirá-los do barril.
+         </p>
+      </div>
+
+      <div className="flex flex-col md:flex-row w-full max-w-4xl gap-8 items-center justify-center">
+        <div className="flex-1 bg-stone-900 p-6 rounded-xl border-4 border-stone-700 shadow-inner flex flex-wrap justify-center gap-4">
+           <h4 className="w-full text-center text-stone-400 uppercase font-bold text-xs mb-2">Bolsas de Pólvora</h4>
+           {AVAILABLE_BAGS.map(bag => {
+             const inBarrel = barrel.find(b => b.id === bag.id);
+             return (
+               <button key={bag.id} onClick={() => !inBarrel && handleAddBag(bag)} disabled={inBarrel}
+                 className={`w-16 h-20 md:w-20 md:h-24 rounded-b-xl rounded-t-sm flex items-center justify-center font-bold text-lg md:text-xl shadow-lg transition-all duration-300 ${inBarrel ? 'opacity-20 cursor-not-allowed grayscale' : 'hover:-translate-y-1 hover:shadow-[0_10px_15px_rgba(249,115,22,0.5)] ' + bag.color} text-white border-2 border-black/50`}
+                 style={{ clipPath: 'polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%)' }}
+               >{bag.weight}g</button>
+             )
+           })}
+        </div>
+
+        <div className="flex-1 flex flex-col items-center gap-6">
+           <div className={`relative w-48 h-48 md:w-56 md:h-56 bg-amber-900 rounded-full border-8 border-amber-950 flex flex-col items-center justify-end p-4 shadow-[inset_0_-20px_50px_rgba(0,0,0,0.8)] transition-all ${explosionState === 'poof' ? 'animate-[shake_0.5s_ease-in-out]' : ''}`}>
+              <div className="absolute inset-0 opacity-30 pointer-events-none" style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/wood-pattern.png")' }}></div>
+              <div className="absolute top-4 text-amber-200/50 font-bold uppercase tracking-widest text-xs z-10">Barril</div>
+              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/60 px-4 py-2 rounded-lg border border-amber-500/30 z-20 flex flex-col items-center w-3/4">
+                 <span className={`text-3xl md:text-4xl font-mono font-bold transition-colors ${currentWeight === TARGET_WEIGHT ? 'text-green-400 drop-shadow-[0_0_10px_#4ade80]' : currentWeight > TARGET_WEIGHT ? 'text-red-500' : 'text-amber-400'}`}>{currentWeight}g</span>
+                 <span className="text-[10px] md:text-xs text-white/50 uppercase">Alvo: {TARGET_WEIGHT}g</span>
+              </div>
+              <div className="flex flex-wrap justify-center gap-1 z-30 mt-auto pb-2">
+                 {barrel.map(bag => (
+                   <button key={bag.id} onClick={() => handleRemoveBag(bag)} className={`w-8 h-10 md:w-10 md:h-12 rounded-b-sm rounded-t-sm flex items-center justify-center font-bold text-xs shadow-md hover:-translate-y-1 ${bag.color} text-white border border-black/50 transition-transform`} style={{ clipPath: 'polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%)' }} title="Remover">{bag.weight}</button>
+                 ))}
+              </div>
+           </div>
+           <button onClick={handleDetonate} disabled={explosionState !== 'idle' || barrel.length === 0} className="bg-red-700 hover:bg-red-600 disabled:opacity-50 text-white font-bold py-4 px-12 rounded-xl shadow-[0_10px_0_#7f1d1d] hover:shadow-[0_5px_0_#7f1d1d] active:shadow-none active:translate-y-2 hover:translate-y-1 transition-all uppercase tracking-widest text-xl flex items-center gap-3 border-2 border-red-900 w-full md:w-auto justify-center">
+             <AlertTriangle className="w-6 h-6" /> DETONAR!
+           </button>
+        </div>
+      </div>
+
+      {explosionState === 'poof' && (
+        <div className="absolute inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-6 text-center animate-fade-in rounded-2xl">
+           <div className="text-[100px] mb-2 animate-bounce">👨‍🦳💨</div>
+           <h2 className="text-stone-400 font-bold text-4xl mb-4 tracking-widest uppercase">*POOF*</h2>
+           <p className="text-white text-lg md:text-xl max-w-md italic border-l-4 border-stone-500 pl-4 text-left">"{errorMsg}"</p>
+        </div>
+      )}
+
+      {explosionState === 'boom' && (
+        <div className="absolute inset-0 bg-red-950 z-50 flex items-center justify-center p-6 text-center animate-fade-in rounded-2xl overflow-hidden">
+           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_10%,_black_80%)] animate-[ping_1.5s_infinite]"></div>
+           <div className="relative z-10 flex flex-col items-center">
+             <div className="text-[120px] mb-4 animate-[bounce_0.2s_infinite]">🌋</div>
+             <h2 className="text-white font-bold text-5xl md:text-7xl tracking-widest uppercase drop-shadow-[0_0_30px_#ef4444] mb-4">KABOOM!</h2>
+             <p className="text-orange-100 text-xl font-bold bg-black/80 px-8 py-3 rounded-full border border-orange-500 shadow-[0_0_20px_#f97316]">Passagem para o Magma Aberta!</p>
+           </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+
+// Fase 8: A Fuga Explosiva (Mecânica de Clicker / Esmagar Botão)
+const VolcanoEscapeInteractive = ({ onSolve }) => {
+  const TARGET_CLICKS = 50;
+  const TIME_LIMIT = 15;
+
+  const [gameState, setGameState] = useState('intro'); // intro, playing, won, lost
+  const [clicks, setClicks] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(TIME_LIMIT);
+  const [isShaking, setIsShaking] = useState(false);
+
+  useEffect(() => {
+    if (gameState === 'playing' && timeLeft > 0) {
+      const timer = setTimeout(() => setTimeLeft(prev => prev - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [gameState, timeLeft]);
+
+  useEffect(() => {
+    if (gameState !== 'playing') return;
+    
+    if (clicks >= TARGET_CLICKS) {
+      setGameState('won');
+      setTimeout(() => { onSolve(); }, 4000);
+    } else if (timeLeft === 0) {
+      setGameState('lost');
+    }
+  }, [clicks, timeLeft, gameState, onSolve]);
+
+  const handlePress = useCallback(() => {
+    if (gameState !== 'playing') return;
+    setClicks(prev => {
+      const newClicks = prev + 1;
+      if (newClicks % 10 === 0 && newClicks < TARGET_CLICKS) {
+        setIsShaking(true);
+        setTimeout(() => setIsShaking(false), 400);
+      }
+      return newClicks;
+    });
+  }, [gameState]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === ' ' || e.code === 'Space') {
+        e.preventDefault();
+        handlePress();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handlePress]);
+
+  const startGame = () => {
+    setClicks(0);
+    setTimeLeft(TIME_LIMIT);
+    setGameState('playing');
+  };
+
+  const fillPercentage = Math.min(100, (clicks / TARGET_CLICKS) * 100);
+
+  const wallScrollStyles = `
+    @keyframes wall-scroll { 0% { background-position: 0 0; } 100% { background-position: 0 100%; } }
+    .animate-wall-scroll { animation: wall-scroll 0.5s linear infinite; }
+    @keyframes extreme-shake { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(8px, 8px); } 50% { transform: translate(-8px, -8px); } 75% { transform: translate(8px, -8px); } }
+    .animate-extreme-shake { animation: extreme-shake 0.1s infinite; }
+    @keyframes flash-white { 0% { background-color: transparent; } 10%, 90% { background-color: white; } 100% { background-color: transparent; } }
+    .animate-flash-white { animation: flash-white 0.5s ease-out; }
+  `;
+
+  return (
+    <div className="w-full flex flex-col items-center gap-6 p-4 relative h-[500px] justify-center overflow-hidden rounded-xl border-4 border-red-900 bg-red-950">
+      <style>{wallScrollStyles}</style>
+
+      <div className={`absolute inset-0 opacity-40 mix-blend-overlay ${gameState === 'playing' ? 'animate-wall-scroll' : ''}`} style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/black-scales.png")', backgroundSize: '200px 200px' }} />
+      <div className="absolute inset-0 bg-gradient-to-t from-red-900 via-transparent to-black pointer-events-none" />
+
+      {gameState === 'intro' && (
+         <div className="z-10 bg-black/80 p-8 rounded-2xl border-2 border-red-500/50 text-center max-w-md animate-fade-in shadow-[0_0_30px_rgba(239,68,68,0.4)]">
+           <Flame className="w-20 h-20 text-orange-500 mx-auto mb-4 animate-bounce" />
+           <h3 className="text-white font-bold text-2xl uppercase tracking-widest mb-4">A Erupção!</h3>
+           <p className="text-red-200 mb-6">A água do gêiser não tem força suficiente! Você tem <strong>{TIME_LIMIT} segundos</strong> para clicar no botão de pressão <strong>{TARGET_CLICKS} vezes</strong> e nos ejetar do vulcão!</p>
+           <button onClick={startGame} className="bg-red-600 hover:bg-red-500 text-white font-bold py-4 px-10 rounded-full shadow-[0_0_20px_#ef4444] uppercase tracking-widest transition-transform hover:scale-105">INICIAR SUBIDA!</button>
+         </div>
+      )}
+
+      {gameState === 'playing' && (
+         <div className={`z-10 w-full max-w-sm flex flex-col items-center gap-6 ${isShaking ? 'animate-extreme-shake' : ''}`}>
+           <div className="bg-black/60 px-6 py-2 rounded-full border border-red-500/50 flex items-center gap-3">
+             <span className="text-red-400 font-bold uppercase tracking-widest text-sm">Tempo:</span>
+             <span className={`text-3xl font-mono font-bold ${timeLeft <= 5 ? 'text-red-500 animate-pulse' : 'text-white'}`}>00:{timeLeft.toString().padStart(2, '0')}</span>
+           </div>
+           <div className="w-full bg-black/80 p-4 rounded-3xl border-4 border-slate-800 shadow-xl flex flex-col items-center gap-2">
+             <span className="text-slate-400 uppercase font-bold text-xs">Pressão do Gêiser</span>
+             <div className="w-full h-12 bg-slate-900 rounded-full overflow-hidden border-2 border-slate-700 relative">
+               <div className="h-full bg-gradient-to-r from-red-600 via-orange-500 to-yellow-400 transition-all duration-100 ease-out" style={{ width: `${fillPercentage}%` }} />
+               <div className="absolute inset-0 flex items-center justify-center mix-blend-difference text-white font-bold font-mono">{clicks} / {TARGET_CLICKS}</div>
+             </div>
+           </div>
+           <button onClick={handlePress} className="w-48 h-48 rounded-full bg-red-600 hover:bg-red-500 border-8 border-red-900 shadow-[0_15px_0_#7f1d1d,0_20px_30px_rgba(0,0,0,0.8)] active:shadow-[0_5px_0_#7f1d1d,0_10px_15px_rgba(0,0,0,0.8)] active:translate-y-2 transition-all flex flex-col items-center justify-center gap-2 outline-none select-none">
+             <ArrowUp className="w-12 h-12 text-red-200" />
+             <span className="text-white font-bold uppercase tracking-widest text-sm text-center leading-tight">Aumentar<br/>Pressão!</span>
+           </button>
+           <p className="text-red-300/50 text-xs font-bold uppercase">Ou aperte a barra de Espaço!</p>
+         </div>
+      )}
+
+      {gameState === 'lost' && (
+         <div className="z-20 bg-black/90 p-8 rounded-2xl border border-red-500 text-center max-w-md animate-fade-in shadow-2xl">
+           <Skull className="w-16 h-16 text-red-600 mx-auto mb-4" />
+           <h3 className="text-red-500 font-bold text-2xl uppercase tracking-widest mb-4">A Jangada Caiu!</h3>
+           <p className="text-white mb-6">Faltou pressão! A jangada não suportou o peso e começou a descer. Respire fundo e prepare os dedos!</p>
+           <button onClick={startGame} className="bg-red-700 hover:bg-red-600 text-white font-bold py-3 px-8 rounded-full uppercase tracking-widest flex items-center gap-2 mx-auto"><RefreshCcw className="w-5 h-5" /> Tentar Novamente</button>
+         </div>
+      )}
+
+      {gameState === 'won' && (
+         <div className="absolute inset-0 z-30 flex flex-col items-center justify-center animate-flash-white bg-white/20 backdrop-blur-sm">
+            <div className="text-[120px] animate-[bounce_0.2s_infinite]">🚀🌋</div>
+            <h2 className="text-white text-6xl font-bold uppercase tracking-widest drop-shadow-[0_0_20px_#ef4444] mt-4">EJETADOS!</h2>
+         </div>
+      )}
+    </div>
+  );
+};
+
+
+// === COMPONENTE PRINCIPAL ===
+export default function App() {
+  const [currentStage, setCurrentStage] = useState(-1);
+  const [isGameComplete, setIsGameComplete] = useState(false);
+
+  const handleStageSolve = () => {
+    if (currentStage === GAME_STAGES.length - 1) {
+      setIsGameComplete(true);
+    } else {
+      setCurrentStage(prev => prev + 1);
+    }
+  };
+
+  const getThemeColors = (themeName) => {
+    const themes = {
+      amber: { bg: 'bg-amber-950', text: 'text-amber-100', border: 'border-amber-800' },
+      slate: { bg: 'bg-slate-900', text: 'text-slate-100', border: 'border-slate-700' },
+      orange: { bg: 'bg-orange-950', text: 'text-orange-100', border: 'border-orange-800' },
+      cyan: { bg: 'bg-cyan-950', text: 'text-cyan-100', border: 'border-cyan-800' },
+      red: { bg: 'bg-red-950', text: 'text-red-100', border: 'border-red-800' }
+    };
+    return themes[themeName] || themes.slate;
+  };
+
+  if (currentStage === -1) {
+    return (
+      <div className="min-h-screen bg-neutral-900 text-white flex flex-col items-center justify-center relative overflow-hidden font-serif">
+        <div className="absolute inset-0 z-0 opacity-30" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1456324504439-367cee3b3c32?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')", backgroundSize: 'cover', backgroundPosition: 'center' }} />
+        <div className="absolute inset-0 z-0 bg-gradient-to-b from-transparent to-neutral-900" />
+        <div className="z-10 text-center max-w-3xl p-8 bg-neutral-900/80 backdrop-blur-sm border border-neutral-700 rounded-xl shadow-2xl">
+          <Compass className="w-20 h-20 mx-auto text-amber-500 mb-6 animate-[spin_10s_linear_infinite]" />
+          <h1 className="text-5xl md:text-6xl font-bold mb-4 tracking-wider text-amber-500 uppercase">
+            Viagem ao Centro da Terra
+          </h1>
+          <h2 className="text-2xl text-neutral-300 mb-8 italic">Um Escape Room Geográfico</h2>
+          <p className="text-lg text-neutral-400 mb-10 leading-relaxed">
+            Aventure-se nas profundezas. Interaja com objetos virtuais, decifre runas escondidas pela sala e utilize seus conhecimentos de Geografia para sobreviver.
+          </p>
+          <button onClick={() => setCurrentStage(0)} className="flex items-center justify-center gap-3 w-full sm:w-auto mx-auto px-8 py-4 bg-amber-600 hover:bg-amber-500 text-white text-xl font-bold rounded-full transition-all transform hover:scale-105 shadow-[0_0_20px_rgba(217,119,6,0.4)]">
+            <Play className="w-6 h-6 fill-current" /> INICIAR EXPEDIÇÃO
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isGameComplete) {
+    return (
+      <div className="min-h-screen bg-blue-950 text-white flex flex-col items-center justify-center relative overflow-hidden font-serif">
+         <div className="absolute inset-0 z-0 opacity-40" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1542224566-6e85f2e6772f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')", backgroundSize: 'cover', backgroundPosition: 'center' }} />
+        <div className="z-10 text-center max-w-2xl p-8 bg-blue-900/80 backdrop-blur-md border border-blue-500 rounded-xl shadow-[0_0_50px_rgba(59,130,246,0.5)]">
+          <CheckCircle className="w-24 h-24 mx-auto text-green-400 mb-6" />
+          <h1 className="text-5xl font-bold mb-4 text-blue-100 uppercase tracking-widest">Sobrevivemos!</h1>
+          <p className="text-xl text-blue-200 mb-8 leading-relaxed">
+            Parabéns! Vocês interagiram, decifraram runas, desvendaram a estrutura da Terra, sobreviveram ao mar mesozoico e foram ejetados em segurança pelo Stromboli.
+          </p>
+          <button onClick={() => { setCurrentStage(-1); setIsGameComplete(false); }} className="flex items-center justify-center gap-2 mx-auto px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition-colors">
+            <RefreshCcw className="w-5 h-5" /> Nova Expedição
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const stage = GAME_STAGES[currentStage];
+  const colors = getThemeColors(stage.theme);
+
+  return (
+    <div className={`min-h-screen flex flex-col transition-colors duration-1000 ${colors.bg} font-serif relative`}>
+      {stage.bgImage && (
+        <div className="absolute inset-0 z-0 opacity-20 transition-opacity duration-1000" style={{ backgroundImage: `url(${stage.bgImage})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }} />
+      )}
+      
+      <div className="z-10 w-full p-4 flex justify-between items-center border-b bg-black/60 backdrop-blur-sm border-white/10">
+        <div className="flex gap-2">
+          {GAME_STAGES.map((s, index) => (
+            <div key={s.id} className={`w-3 h-3 rounded-full transition-all duration-500 ${index === currentStage ? 'bg-white scale-125 shadow-[0_0_10px_white]' : index < currentStage ? 'bg-green-500' : 'bg-white/20'}`} />
+          ))}
+        </div>
+        <div className="text-sm font-bold tracking-widest uppercase text-white/70">
+          Profundidade: {currentStage === 0 ? "Superfície" : `${currentStage * 1250} km`}
+        </div>
+      </div>
+
+      <div className="z-10 flex-1 flex flex-col items-center justify-center p-4 sm:p-8">
+        <div className={`w-full max-w-5xl bg-black/60 backdrop-blur-md rounded-2xl border ${colors.border} shadow-2xl overflow-hidden flex flex-col`}>
+          
+          {stage.interactiveMode !== "prologue" && (
+            <div className="p-8 pb-4 text-center">
+              <h3 className={`text-sm uppercase tracking-widest mb-2 font-bold ${colors.text} opacity-70`}>Fase {currentStage} • {stage.subtitle}</h3>
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">{stage.title}</h2>
+              <p className="text-lg text-white/80 max-w-3xl mx-auto">{stage.description}</p>
+            </div>
+          )}
+
+          <div className="p-8 pt-4 flex-1 flex flex-col items-center justify-center">
+            {stage.interactiveMode === "prologue" && <PrologueInteractive onSolve={handleStageSolve} />}
+            {stage.interactiveMode === "office" && <OfficeInteractive onSolve={handleStageSolve} />}
+            {stage.interactiveMode === "jigsaw" && <JigsawPuzzleInteractive onSolve={handleStageSolve} />}
+            {stage.interactiveMode === "flashlight" && <FlashlightInteractive onSolve={handleStageSolve} />}
+            {stage.interactiveMode === "digging" && <DiggingInteractive onSolve={handleStageSolve} />}
+            {stage.interactiveMode === "giantChase" && <GiantChaseInteractive onSolve={handleStageSolve} />}
+            {stage.interactiveMode === "raftSurvival" && <RaftSurvivalInteractive onSolve={handleStageSolve} />}
+            {stage.interactiveMode === "powderScale" && <PowderScaleInteractive onSolve={handleStageSolve} />}
+            {stage.interactiveMode === "volcanoEscape" && <VolcanoEscapeInteractive onSolve={handleStageSolve} />}
+          </div>
+        </div>
+      </div>
+      
+      <div className="z-10 p-4 text-center text-white/30 text-xs tracking-widest">
+        PROJETO EDUCATIVO • JÚLIO VERNE & GEOGRAFIA
+      </div>
+    </div>
+  );
+}
