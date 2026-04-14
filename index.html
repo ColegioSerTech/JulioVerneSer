@@ -35,7 +35,7 @@
       Play, Lock, Unlock, Compass, Map as MapIcon, Flame, Anchor, AlertTriangle, 
       CheckCircle, RefreshCcw, Eye, BookOpen, Search, X, Package, 
       PackageOpen, Thermometer, Ship, Skull, ArrowUp, ArrowDown, ArrowLeft, 
-      ArrowRight, Activity, Puzzle, Heart, Siren
+      ArrowRight, Activity, Puzzle, Heart, Siren, Sparkles, MessageCircle
     } from 'lucide-react';
 
     // ============================================================================
@@ -76,17 +76,17 @@
       },
       {
         id: 4,
-        title: "A Escavação Subterrânea",
-        subtitle: "Descendo as Camadas",
-        description: "Um desmoronamento bloqueou o túnel! Teremos que escavar pelas camadas geológicas. Quebre as rochas para procurar baús deixados por expedições anteriores. Eles contêm pistas essenciais para a nossa pergunta central.",
-        theme: "orange",
-        interactiveMode: "digging"
+        title: "Perdido na Escuridão",
+        subtitle: "O Eco da Coragem",
+        description: "Axel se perdeu do Professor! Sozinho no labirinto negro, o desespero e o medo do abandono tomam conta. O nosso interior emocional é tão profundo quanto o centro da Terra. Responda às questões com o coração para acender a luz da coragem.",
+        theme: "indigo",
+        interactiveMode: "socioEmotional"
       },
       {
         id: 5,
         title: "A Caverna do Gigante",
         subtitle: "Fuga Desesperada!",
-        description: "O barulho da nossa escavação acordou o terrível Giga-Saur! Corra pelo labirinto escuro até a saída. Desvie dos fósseis no chão, ou você tropeçará e perderá velocidade. Não olhe para trás!",
+        description: "Encontramos o Professor, mas nosso barulho acordou o terrível Giga-Saur! Corra pelo labirinto escuro até a saída. Desvie dos fósseis no chão, ou você tropeçará e perderá velocidade. Não olhe para trás!",
         theme: "red",
         interactiveMode: "giantChase"
       },
@@ -421,113 +421,118 @@
       );
     };
 
-    // --- Fase 4: Escavação Subterrânea (Grid de Blocos e Baús) ---
-    const DiggingInteractive = ({ onSolve }) => {
-      const [blocks, setBlocks] = useState([]);
-      const [hintsFound, setHintsFound] = useState([]);
-      const [inputValue, setInputValue] = useState("");
-      const [errorMsg, setErrorMsg] = useState("");
-
-      const HINTS = [
-        "Dica 1: A palavra mede uma taxa de variação constante.",
-        "Dica 2: Começa com a letra 'G' e termina com a letra 'E'.",
-        "Dica 3: Costuma acompanhar a palavra 'Geotérmico' para explicar a temperatura."
+    // --- Fase 4: Reflexão Socioemocional (O Eco da Coragem) ---
+    const SocioEmotionalInteractive = ({ onSolve }) => {
+      const QUESTIONS = [
+        {
+          q: "Axel se viu sozinho em um túnel escuro e silencioso. Se você se perdesse do seu grupo em um lugar desconhecido, qual seria o seu primeiro passo?",
+          options: [
+            { text: "Sentar no chão e chorar até alguém me achar.", feedback: "Chorar alivia, mas precisamos agir! O Professor diria para você manter a calma.", isBest: false },
+            { text: "Respirar fundo, manter a calma e observar o lugar.", feedback: "Excelente! Respirar fundo é como acender uma lanterna na nossa própria mente.", isBest: true },
+            { text: "Sair correndo o mais rápido possível para qualquer lado.", feedback: "Correr sem direção pode nos perder ainda mais. A calma é a nossa melhor bússola!", isBest: false }
+          ]
+        },
+        {
+          q: "A escuridão faz Axel imaginar coisas assustadoras. Quando você sente muito medo ou se sente sozinho, o que te ajuda a se sentir seguro?",
+          options: [
+            { text: "Ficar bravo e tentar não sentir nada.", feedback: "Sentir medo é normal, até os maiores heróis sentem! Não precisamos esconder nossos sentimentos.", isBest: false },
+            { text: "Lembrar de momentos felizes e das pessoas que me amam.", feedback: "Isso mesmo! O amor e as boas lembranças são o nosso maior escudo contra o medo.", isBest: true },
+            { text: "Esconder o rosto e torcer para o medo sumir sozinho.", feedback: "Enfrentar o medo de olhos abertos, mesmo devagarinho, é o que nos torna mais corajosos.", isBest: false }
+          ]
+        },
+        {
+          q: "Depois de muito andar, a garrafa de água de Axel quebra. Em momentos de dificuldade, quando algo dá errado, como você costuma reagir?",
+          options: [
+            { text: "Fico triste, mas procuro uma nova forma de resolver o problema.", feedback: "Perfeito! A resiliência é justamente a arte de não desistir e encontrar novas soluções.", isBest: true },
+            { text: "Acho que é o fim do mundo e desisto de tentar.", feedback: "Sempre há uma nova nascente de esperança, não podemos desistir no primeiro obstáculo!", isBest: false },
+            { text: "Fico irritado e culpo os outros pelo problema.", feedback: "A culpa não resolve o problema. O foco deve ser sempre procurar a solução!", isBest: false }
+          ]
+        },
+        {
+          q: "Finalmente, através de um eco na caverna, Axel ouve a voz do Professor Lidenbrock! Como devemos agir quando recebemos ajuda depois de passar por um problema?",
+          options: [
+            { text: "Finjo que não precisei de ajuda e que estava tudo bem.", feedback: "É muito corajoso admitir que precisamos de ajuda. Ninguém precisa ser invencível.", isBest: false },
+            { text: "Reclamo por terem demorado tanto para me encontrar.", feedback: "A alegria do reencontro deve ser maior que a demora. Valorize sempre quem te procura!", isBest: false },
+            { text: "Agradeço com o coração e demonstro a minha alegria.", feedback: "A gratidão e o alívio curam qualquer ferida! A luz voltou, você encontrou o grupo!", isBest: true }
+          ]
+        }
       ];
 
-      useEffect(() => {
-        const initialBlocks = Array.from({ length: 20 }, (_, i) => ({
-          id: i, isBroken: false, hasChest: false, chestOpened: false
-        }));
-        let chestIndices = [];
-        while(chestIndices.length < 3) {
-          let r = Math.floor(Math.random() * 20);
-          if(!chestIndices.includes(r)) chestIndices.push(r);
-        }
-        chestIndices.forEach((index) => { initialBlocks[index].hasChest = true; });
-        setBlocks(initialBlocks);
-      }, []);
+      const [currentQ, setCurrentQ] = useState(0);
+      const [feedback, setFeedback] = useState(null); // { text, isBest }
 
-      const handleBlockClick = (index) => {
-        const newBlocks = [...blocks];
-        const block = newBlocks[index];
-
-        if (!block.isBroken) {
-          block.isBroken = true;
-          setBlocks(newBlocks);
-        } else if (block.hasChest && !block.chestOpened) {
-          block.chestOpened = true;
-          const nextHintIndex = hintsFound.length;
-          if (nextHintIndex < HINTS.length) {
-            setHintsFound(prev => [...prev, HINTS[nextHintIndex]]);
-          }
-          setBlocks(newBlocks);
-        }
+      const handleAnswer = (option) => {
+        setFeedback({ text: option.feedback, isBest: option.isBest });
       };
 
-      const handleSubmit = (e) => {
-        e.preventDefault();
-        const cleanInput = inputValue.trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); 
-        if (cleanInput === "GRADIENTE" || cleanInput === "GRADIENTE GEOTERMICO") {
-          onSolve();
+      const handleNext = () => {
+        setFeedback(null);
+        if (currentQ < QUESTIONS.length - 1) {
+          setCurrentQ(currentQ + 1);
         } else {
-          setErrorMsg("Resposta incorreta! Continue escavando atrás de mais pistas.");
-          setInputValue("");
+          onSolve();
         }
       };
+
+      const q = QUESTIONS[currentQ];
+      // Calcula o quão iluminada a caverna está (0% a 100%)
+      const lightProgress = (currentQ / QUESTIONS.length) * 100;
 
       return (
-        <div className="w-full flex flex-col items-center gap-6 p-2 md:p-4 select-none">
-          <div className="bg-orange-950/80 border border-orange-500/50 p-4 rounded-xl shadow-lg w-full max-w-3xl text-center">
-            <h3 className="text-orange-200 font-bold mb-3 uppercase tracking-widest text-xs md:text-sm flex items-center justify-center gap-2">
-              <Thermometer className="w-5 h-5"/> O Enigma Térmico
-            </h3>
-            <p className="text-white text-sm md:text-base italic leading-relaxed">
-              "O Professor Lidenbrock duvidava do calor extremo no interior da Terra. Hoje sabemos que a temperatura aumenta consideravelmente à medida que escavamos. <strong>Como se chama a taxa de aumento da temperatura em relação à profundidade da Terra?</strong>"
-            </p>
+        <div className="w-full max-w-4xl flex flex-col items-center gap-6 p-4 md:p-8 select-none relative overflow-hidden rounded-2xl border-4 border-indigo-900" style={{ backgroundColor: '#0f172a' }}>
+          {/* Efeito de iluminação progressiva no fundo */}
+          <div 
+            className="absolute inset-0 transition-opacity duration-1000 ease-in-out pointer-events-none" 
+            style={{ 
+              background: 'radial-gradient(circle at center, rgba(251, 191, 36, 0.4) 0%, transparent 70%)',
+              opacity: lightProgress > 0 ? (lightProgress / 100) + 0.2 : 0.1 
+            }}
+          />
+
+          {/* Cabeçalho da Atividade */}
+          <div className="z-10 flex items-center gap-3 bg-indigo-950/80 px-6 py-3 rounded-full border border-indigo-500 shadow-lg">
+             <Heart className="w-6 h-6 text-pink-400 animate-pulse" />
+             <span className="text-indigo-200 font-bold uppercase tracking-widest text-xs md:text-sm">Fragmento de Coragem {currentQ + 1}/{QUESTIONS.length}</span>
           </div>
 
-          <div className="flex flex-col md:flex-row gap-8 w-full max-w-4xl justify-center items-start">
-            <div className="grid grid-cols-5 gap-1 md:gap-2 bg-[#3e2723] p-3 md:p-4 rounded-2xl border-4 border-[#261410] shadow-inner shrink-0 cursor-crosshair mx-auto touch-manipulation">
-              {blocks.map((block, i) => (
-                <div 
-                  key={block.id} onClick={() => handleBlockClick(i)}
-                  className={`relative w-12 h-12 md:w-16 md:h-16 rounded transition-all duration-300 flex items-center justify-center overflow-hidden
-                    ${!block.isBroken ? 'bg-stone-500 hover:bg-stone-400 border-b-4 border-stone-700 hover:-translate-y-1 active:border-b-0 active:translate-y-1' : 'bg-stone-900 border border-black/50 shadow-inner'}
-                  `}
-                >
-                  {!block.isBroken && <div className="absolute inset-0 opacity-30 mix-blend-overlay pointer-events-none" style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/black-scales.png")' }}></div>}
-                  {block.isBroken && block.hasChest && !block.chestOpened && <Package className="w-8 h-8 md:w-10 md:h-10 text-amber-500 animate-bounce cursor-pointer drop-shadow-[0_0_10px_rgba(245,158,11,0.5)]" />}
-                  {block.isBroken && block.hasChest && block.chestOpened && <PackageOpen className="w-8 h-8 md:w-10 md:h-10 text-amber-700 opacity-50" />}
-                </div>
-              ))}
-            </div>
-
-            <div className="flex-1 w-full flex flex-col gap-4">
-              <div className="bg-black/40 border border-white/10 rounded-xl p-4 min-h-[160px] flex flex-col">
-                <h4 className="text-orange-300 font-bold uppercase tracking-widest text-xs mb-3 border-b border-orange-500/30 pb-2">Baús Encontrados: {hintsFound.length}/3</h4>
-                <ul className="flex flex-col gap-2 flex-1">
-                  {hintsFound.length === 0 && <li className="text-white/40 text-sm italic m-auto">Nenhum baú aberto. Quebre as rochas!</li>}
-                  {hintsFound.map((h, i) => (
-                    <li key={i} className="text-orange-100 text-xs md:text-sm bg-orange-900/30 p-2 rounded border border-orange-500/20 animate-fade-in flex gap-2 items-start shadow-sm">
-                      <Search className="w-4 h-4 mt-0.5 shrink-0 text-orange-400"/>{h}
-                    </li>
+          <div className="z-10 w-full bg-slate-900/90 backdrop-blur-sm p-6 md:p-10 rounded-2xl border-2 border-indigo-800 shadow-[0_0_40px_rgba(49,46,129,0.8)] text-center min-h-[300px] flex flex-col justify-center transition-all">
+            
+            {!feedback ? (
+              <div className="animate-fade-in flex flex-col gap-8">
+                <p className="text-white text-lg md:text-2xl font-serif leading-relaxed">
+                  "{q.q}"
+                </p>
+                <div className="flex flex-col gap-3">
+                  {q.options.map((opt, i) => (
+                    <button 
+                      key={i} 
+                      onClick={() => handleAnswer(opt)}
+                      className="bg-indigo-900 hover:bg-indigo-700 text-indigo-100 p-4 rounded-xl border border-indigo-500 transition-all transform hover:scale-[1.02] active:scale-95 text-sm md:text-base text-left flex gap-4 items-center shadow-md"
+                    >
+                      <span className="bg-indigo-950 text-indigo-300 font-bold w-8 h-8 flex items-center justify-center rounded-full shrink-0 border border-indigo-700">
+                        {String.fromCharCode(65 + i)}
+                      </span>
+                      {opt.text}
+                    </button>
                   ))}
-                </ul>
+                </div>
               </div>
-              <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-                <input
-                  type="text"
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  placeholder="QUAL É O CONCEITO?"
-                  className="w-full bg-black/50 border-2 border-orange-500/30 rounded-lg px-4 py-3 text-center text-xl font-mono uppercase font-bold text-orange-100 focus:outline-none focus:border-orange-500 transition-colors shadow-inner"
-                />
-                {errorMsg && <p className="text-red-400 text-sm text-center font-bold animate-pulse">{errorMsg}</p>}
-                <button type="submit" disabled={!inputValue.trim()} className="w-full bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white font-bold py-3 rounded-lg transition-colors shadow-md tracking-widest uppercase">
-                  Confirmar Resposta
+            ) : (
+              <div className="animate-fade-in flex flex-col items-center justify-center gap-6 py-8">
+                <div className={`w-20 h-20 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(0,0,0,0.5)] ${feedback.isBest ? 'bg-green-500/20 border border-green-400 text-green-400' : 'bg-amber-500/20 border border-amber-400 text-amber-400'}`}>
+                   {feedback.isBest ? <Sparkles className="w-10 h-10 animate-bounce" /> : <MessageCircle className="w-10 h-10" />}
+                </div>
+                <p className="text-white text-xl md:text-2xl font-serif italic max-w-2xl">
+                  {feedback.text}
+                </p>
+                <button 
+                  onClick={handleNext}
+                  className="mt-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-10 rounded-full shadow-[0_0_20px_#4f46e5] uppercase tracking-widest transition-transform hover:scale-105"
+                >
+                  {currentQ < QUESTIONS.length - 1 ? 'Continuar Caminhada' : 'Encontrar o Professor!'}
                 </button>
-              </form>
-            </div>
+              </div>
+            )}
           </div>
         </div>
       );
@@ -1247,6 +1252,7 @@
 
       const getThemeColors = (themeName) => {
         const themes = {
+          indigo: { bg: 'bg-indigo-950', text: 'text-indigo-100', border: 'border-indigo-800' },
           amber: { bg: 'bg-amber-950', text: 'text-amber-100', border: 'border-amber-800' },
           slate: { bg: 'bg-slate-900', text: 'text-slate-100', border: 'border-slate-700' },
           orange: { bg: 'bg-orange-950', text: 'text-orange-100', border: 'border-orange-800' },
@@ -1342,7 +1348,7 @@
                 {stage.interactiveMode === "office" && <OfficeInteractive onSolve={handleStageSolve} />}
                 {stage.interactiveMode === "jigsaw" && <JigsawPuzzleInteractive onSolve={handleStageSolve} />}
                 {stage.interactiveMode === "flashlight" && <FlashlightInteractive onSolve={handleStageSolve} />}
-                {stage.interactiveMode === "digging" && <DiggingInteractive onSolve={handleStageSolve} />}
+                {stage.interactiveMode === "socioEmotional" && <SocioEmotionalInteractive onSolve={handleStageSolve} />}
                 {stage.interactiveMode === "giantChase" && <GiantChaseInteractive onSolve={handleStageSolve} />}
                 {stage.interactiveMode === "raftSurvival" && <RaftSurvivalInteractive onSolve={handleStageSolve} />}
                 {stage.interactiveMode === "powderScale" && <PowderScaleInteractive onSolve={handleStageSolve} />}
